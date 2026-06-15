@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAP · Sistema de Inventario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+/* ===== TOKENS ===== */
+:root {
+  --dap-morado:    #8B1A6B;
+  --dap-morado-2:  #B5237A;
+  --dap-naranja:   #E8450A;
+  --dap-naranja-2: #FF5C1A;
+  --dap-negro:     #1A1A2E;
+  --dap-crema:     #F9F6F0;
+  --dap-crema-2:   #EDE8DF;
+  --dap-blanco:    #FFFFFF;
+  --dap-gris:      #6B6678;
+  --radio:         12px;
+  --sombra:        0 4px 24px rgba(139,26,107,0.10);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--dap-crema);
+  color: var(--dap-negro);
+  line-height: 1.6;
+}
+
+/* ===== LOADING ===== */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: var(--dap-negro);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  z-index: 1000; gap: 20px; transition: opacity 0.5s;
+}
+.loading-overlay.oculto { opacity: 0; pointer-events: none; }
+.dap-dots-loader {
+  width: 60px; height: 60px; position: relative;
+}
+.dap-dots-loader span {
+  position: absolute; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--dap-morado-2);
+  animation: orbitDot 1.4s linear infinite;
+}
+.dap-dots-loader span:nth-child(1) { animation-delay: 0s; }
+.dap-dots-loader span:nth-child(2) { animation-delay: -0.35s; }
+.dap-dots-loader span:nth-child(3) { animation-delay: -0.7s; }
+.dap-dots-loader span:nth-child(4) { animation-delay: -1.05s; }
+@keyframes orbitDot {
+  0%   { transform: rotate(0deg) translateX(24px); opacity: 1; }
+  50%  { opacity: 0.4; }
+  100% { transform: rotate(360deg) translateX(24px); opacity: 1; }
+}
+.loading-texto {
+  color: rgba(255,255,255,0.7); font-size: 15px;
+  font-family: 'Inter', sans-serif; letter-spacing: 0.05em;
+}
+
+/* ===== HERO ===== */
+.hero {
+  position: relative; height: 100vh; min-height: 600px;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  overflow: hidden; text-align: center;
+}
+.hero-video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.hero-overlay {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(
+    160deg,
+    rgba(26,26,46,0.75) 0%,
+    rgba(139,26,107,0.82) 60%,
+    rgba(181,35,122,0.70) 100%
+  );
+}
+/* Círculo de puntos inspirado en logo DAP */
+.hero-ring {
+  position: absolute; z-index: 2;
+  width: 520px; height: 520px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255,255,255,0.18);
+  animation: spinRing 30s linear infinite;
+  pointer-events: none;
+}
+.hero-ring::before {
+  content: '';
+  position: absolute; top: -5px; left: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  transform: translateX(-50%);
+}
+@keyframes spinRing { to { transform: rotate(360deg); } }
+.hero-content {
+  position: relative; z-index: 3;
+  max-width: 700px; padding: 0 24px;
+}
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 6px 16px; border-radius: 100px;
+  margin-bottom: 24px;
+}
+.hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(38px, 6vw, 68px);
+  font-weight: 700; line-height: 1.1;
+  color: #FFFFFF; margin-bottom: 18px;
+  letter-spacing: -0.02em;
+}
+.hero-title em { font-style: italic; color: rgba(255,255,255,0.85); }
+.hero-sub {
+  font-size: 17px; color: rgba(255,255,255,0.8);
+  max-width: 460px; margin: 0 auto 36px;
+  font-weight: 300;
+}
+.hero-scroll {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; color: rgba(255,255,255,0.6); font-size: 13px;
+  cursor: pointer; transition: color 0.2s;
+}
+.hero-scroll:hover { color: white; }
+.hero-scroll i { font-size: 20px; animation: bounceDown 2s infinite; }
+@keyframes bounceDown {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(6px); }
+}
+.hero-date {
+  position: absolute; top: 28px; right: 32px; z-index: 3;
+  color: rgba(255,255,255,0.7); font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-refresh {
+  position: absolute; top: 24px; left: 32px; z-index: 3;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+  color: white; padding: 8px 16px; border-radius: 100px;
+  font-size: 13px; font-family: 'Inter', sans-serif;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: background 0.2s;
+}
+.hero-refresh:hover { background: rgba(255,255,255,0.22); }
+
+/* ===== ALERTA ===== */
+.alerta-wrap { position: sticky; top: 0; z-index: 50; }
+.alerta-msg {
+  display: none; align-items: center; gap: 12px;
+  padding: 14px 28px; font-size: 15px; font-weight: 500;
+  background: #1E4D2B; color: #A8EFC0;
+}
+.alerta-msg.error { background: #4D1E1E; color: #EFBBA8; }
+.alerta-msg.visible { display: flex; }
+
+/* ===== MAIN ===== */
+.main { max-width: 1280px; margin: 0 auto; padding: 48px 24px 80px; }
+
+/* ===== PESTAÑAS ===== */
+.tabs-wrap {
+  display: flex; gap: 0; margin-bottom: 40px;
+  border-bottom: 2px solid var(--dap-crema-2);
+}
+.tab {
+  padding: 14px 28px; border: none; background: transparent;
+  font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 500;
+  color: var(--dap-gris); cursor: pointer; display: flex; align-items: center;
+  gap: 8px; border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.tab:hover { color: var(--dap-morado); }
+.tab.activa { color: var(--dap-morado); border-bottom-color: var(--dap-morado); font-weight: 600; }
+.tab i { font-size: 20px; }
+
+/* ===== SECCIÓN ===== */
+.seccion { display: none; }
+.seccion.activa { display: block; }
+
+/* ===== ACCIONES ===== */
+.acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px; }
+.btn-accion {
+  border: none; border-radius: 16px; padding: 28px 24px;
+  cursor: pointer; display: flex; align-items: center; gap: 20px;
+  text-align: left; font-family: 'Inter', sans-serif;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--sombra);
+}
+.btn-accion:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(139,26,107,0.18); }
+.btn-recibir-ali { background: linear-gradient(135deg, var(--dap-morado) 0%, var(--dap-morado-2) 100%); }
+.btn-repartir-ali { background: linear-gradient(135deg, #5C1158 0%, var(--dap-morado) 100%); }
+.btn-recibir-art { background: linear-gradient(135deg, var(--dap-naranja) 0%, var(--dap-naranja-2) 100%); }
+.btn-repartir-art { background: linear-gradient(135deg, #C2370A 0%, var(--dap-naranja) 100%); }
+.btn-icono {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: white; flex-shrink: 0;
+}
+.btn-texto h3 { font-size: 18px; font-weight: 600; color: white; margin-bottom: 4px; }
+.btn-texto p  { font-size: 14px; color: rgba(255,255,255,0.75); }
+
+/* ===== TÍTULO DE SECCIÓN ===== */
+.sec-titulo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.sec-titulo-linea {
+  width: 4px; height: 28px; border-radius: 2px;
+}
+.morado { background: var(--dap-morado); }
+.naranja { background: var(--dap-naranja); }
+.sec-titulo h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 600; color: var(--dap-negro);
+}
+
+/* ===== RESUMEN ===== */
+.resumen { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 40px; }
+.resumen-card {
+  background: white; border-radius: var(--radio);
+  padding: 20px; text-align: center;
+  border: 1px solid var(--dap-crema-2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.resumen-card .num {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px; font-weight: 700;
+  line-height: 1;
+}
+.resumen-card .label { font-size: 13px; color: var(--dap-gris); margin-top: 6px; }
+.num-morado { color: var(--dap-morado); }
+.num-naranja { color: var(--dap-naranja); }
+.num-rojo    { color: #C0392B; }
+
+/* ===== CATEGORÍAS ===== */
+.categorias {
+  display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr));
+  gap: 16px; margin-bottom: 40px;
+}
+.cat-card {
+  background: white; border-radius: var(--radio);
+  border: 1px solid var(--dap-crema-2); overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.cat-card:hover { box-shadow: var(--sombra); }
+.cat-header {
+  padding: 16px 18px;
+  display: flex; align-items: center;
+  justify-content: space-between; cursor: pointer;
+  border-bottom: 1px solid var(--dap-crema-2);
+}
+.cat-header.morado-bg { background: linear-gradient(135deg, rgba(139,26,107,0.06), rgba(181,35,122,0.04)); }
+.cat-header.naranja-bg { background: linear-gradient(135deg, rgba(232,69,10,0.06), rgba(255,92,26,0.04)); }
+.cat-info { display: flex; align-items: center; gap: 12px; }
+.cat-icono {
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: white;
+}
+.cat-icono.m { background: var(--dap-morado); }
+.cat-icono.n { background: var(--dap-naranja); }
+.cat-nombre  { font-size: 16px; font-weight: 600; color: var(--dap-negro); }
+.cat-conteo  { font-size: 12px; color: var(--dap-gris); margin-top: 2px; }
+.cat-toggle  { font-size: 22px; color: var(--dap-gris); transition: transform 0.25s; }
+.cat-card.abierto .cat-toggle { transform: rotate(180deg); }
+.cat-items { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+.cat-card.abierto .cat-items { max-height: 800px; overflow-y: auto; }
+.item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 18px; border-bottom: 1px solid var(--dap-crema);
+}
+.item:last-child { border-bottom: none; }
+.item-nombre { font-size: 14px; color: var(--dap-negro); }
+.item-badge {
+  font-size: 13px; font-weight: 600; padding: 3px 12px;
+  border-radius: 100px;
+}
+.badge-alto  { background: rgba(139,26,107,0.10); color: var(--dap-morado); }
+.badge-alto-n{ background: rgba(232,69,10,0.10);  color: var(--dap-naranja); }
+.badge-medio { background: rgba(184,134,11,0.12); color: #8B6914; }
+.badge-bajo  { background: rgba(192,57,43,0.10);  color: #C0392B; }
+
+.vacio {
+  grid-column: 1/-1; background: white; border-radius: var(--radio);
+  border: 2px dashed var(--dap-crema-2); padding: 56px 20px; text-align: center;
+}
+.vacio i { font-size: 44px; color: var(--dap-crema-2); }
+.vacio .v-titulo { font-size: 17px; font-weight: 600; margin-top: 12px; color: var(--dap-negro); }
+.vacio .v-sub    { font-size: 14px; color: var(--dap-gris); margin-top: 4px; }
+
+/* ===== SUCURSALES ===== */
+.sucursales { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 60px; }
+.suc-card {
+  background: white; border-radius: var(--radio);
+  border: 1px solid var(--dap-crema-2); padding: 22px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.suc-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.suc-icono {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.suc-icono.m { background: rgba(139,26,107,0.10); color: var(--dap-morado); }
+.suc-icono.n { background: rgba(232,69,10,0.10); color: var(--dap-naranja); }
+.suc-nombre { font-size: 16px; font-weight: 600; color: var(--dap-negro); }
+.suc-sub    { font-size: 12px; color: var(--dap-gris); }
+.suc-divider { height: 1px; background: var(--dap-crema-2); margin-bottom: 14px; }
+.suc-stats  { display: flex; justify-content: space-between; }
+.suc-stat .num {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-weight: 700;
+}
+.suc-stat .label { font-size: 11px; color: var(--dap-gris); margin-top: 2px; }
+.suc-fecha {
+  font-size: 12px; color: var(--dap-gris); margin-top: 12px;
+  display: flex; align-items: center; gap: 6px;
+  padding-top: 12px; border-top: 1px solid var(--dap-crema);
+}
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(26,26,46,0.65); backdrop-filter: blur(4px);
+  z-index: 100; justify-content: center; align-items: center; padding: 20px;
+}
+.modal-overlay.activo { display: flex; }
+.modal {
+  background: white; border-radius: 20px; padding: 32px;
+  max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(26,26,46,0.25);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--dap-crema-2);
+}
+.modal-header h2 { font-family: 'Playfair Display',serif; font-size: 22px; color: var(--dap-negro); }
+.modal-header p  { font-size: 13px; color: var(--dap-gris); margin-top: 3px; }
+.btn-cerrar {
+  background: var(--dap-crema); border: none; width: 36px; height: 36px;
+  border-radius: 50%; cursor: pointer; font-size: 18px; color: var(--dap-gris);
+  flex-shrink: 0; display:flex; align-items:center; justify-content:center;
+}
+.form-grupo { margin-bottom: 16px; }
+.form-grupo label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--dap-negro); letter-spacing: 0.02em; }
+.form-grupo select, .form-grupo input {
+  width: 100%; padding: 12px 14px; font-size: 15px;
+  border: 1.5px solid var(--dap-crema-2); border-radius: 10px;
+  font-family: 'Inter', sans-serif; background: white; color: var(--dap-negro);
+  transition: border-color 0.2s;
+}
+.form-grupo select:focus, .form-grupo input:focus { outline: none; border-color: var(--dap-morado); }
+.form-grupo select:focus.naranja-focus, .form-grupo input.naranja-focus:focus { border-color: var(--dap-naranja); }
+.form-fila { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+.modal-footer { display: flex; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--dap-crema-2); }
+.btn { flex:1; padding: 13px; font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer; border: none; font-family: 'Inter',sans-serif; transition: all 0.2s; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-morado  { background: var(--dap-morado);  color: white; }
+.btn-morado:hover:not(:disabled) { background: var(--dap-morado-2); }
+.btn-naranja { background: var(--dap-naranja); color: white; }
+.btn-naranja:hover:not(:disabled) { background: var(--dap-naranja-2); }
+.btn-neutro  { background: var(--dap-crema-2); color: var(--dap-negro); }
+.disponible-info {
+  background: rgba(139,26,107,0.07); color: var(--dap-morado);
+  padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+  display: none; font-size: 14px; border: 1px solid rgba(139,26,107,0.15);
+}
+.disponible-info.naranja { background: rgba(232,69,10,0.07); color: var(--dap-naranja); border-color: rgba(232,69,10,0.15); }
+.config-warning {
+  background: #FFF3CD; color: #856404; padding: 20px 28px;
+  font-size: 15px; display: flex; align-items: center; gap: 12px;
+}
+
+/* ===== BANNER DE VIDEO AMBIENTAL ===== */
+.sec-video-banner {
+  position: relative; border-radius: 20px; overflow: hidden;
+  height: 200px; margin-bottom: 40px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.sec-video-banner video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.sec-video-banner .ban-overlay {
+  position: absolute; inset: 0; z-index: 1;
+}
+.ban-overlay.morado {
+  background: linear-gradient(
+    100deg,
+    rgba(139,26,107,0.82) 0%,
+    rgba(26,26,46,0.55) 60%,
+    rgba(139,26,107,0.30) 100%
+  );
+}
+.ban-overlay.naranja {
+  background: linear-gradient(
+    100deg,
+    rgba(200,55,10,0.82) 0%,
+    rgba(26,26,46,0.55) 60%,
+    rgba(232,69,10,0.30) 100%
+  );
+}
+.sec-video-banner .ban-content {
+  position: relative; z-index: 2;
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; padding: 0 36px;
+}
+.ban-content .ban-tag {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  margin-bottom: 10px;
+}
+.ban-content h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700; color: white; line-height: 1.2;
+  max-width: 420px;
+}
+.ban-content p {
+  font-size: 14px; color: rgba(255,255,255,0.75);
+  margin-top: 8px; max-width: 380px; font-weight: 300;
+}
+/* Pausa en hover para que no distraiga */
+.sec-video-banner:hover video { animation-play-state: paused; }
+
+@media (max-width: 768px) {
+  .sec-video-banner { height: 160px; }
+  .ban-content { padding: 0 20px; }
+  .ban-content h3 { font-size: 20px; }
+}
+
+@media (max-width: 768px) {
+  .acciones, .sucursales, .resumen { grid-template-columns: 1fr; }
+  .form-fila { grid-template-columns: 1fr; }
+  .tabs-wrap { overflow-x: auto; }
+  .hero-ring { width: 300px; height: 300px; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="dap-dots-loader">
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <div class="loading-texto" id="loading-texto">Conectando con la hoja...</div>
+</div>
+
+<!-- CONFIG WARNING -->
+<div class="config-warning" id="config-warning" style="display:none;">
+  <i class="ti ti-alert-triangle" style="font-size:22px;"></i>
+  <span>Falta configurar la URL. Abre el HTML y pega tu URL en <code>URL_API</code>.</span>
+</div>
+
+<!-- ALERTA -->
+<div class="alerta-wrap">
+  <div class="alerta-msg" id="alerta">
+    <i class="ti ti-circle-check" style="font-size:20px;"></i>
+    <span id="alerta-texto"></span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <video class="hero-video" autoplay muted loop playsinline
+    src="https://videos.pexels.com/video-files/3209828/3209828-uhd_2560_1440_25fps.mp4">
+  </video>
+  <div class="hero-overlay"></div>
+  <div class="hero-ring"></div>
+
+  <button class="hero-refresh" onclick="cargarDatos()">
+    <i class="ti ti-refresh"></i> Actualizar
+  </button>
+  <div class="hero-date">
+    <i class="ti ti-calendar" style="font-size:15px;"></i>
+    <span id="fecha-hoy"></span>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Donadores Altruistas de Puebla · Sistema Interno</div>
+    <h1 class="hero-title">
+      Centro de<br><em>Donaciones</em>
+    </h1>
+    <p class="hero-sub">Gestión de inventario y repartos para la sucursal principal</p>
+    <div class="hero-scroll" onclick="document.querySelector('.main').scrollIntoView({behavior:'smooth'})">
+      <span>Ver inventario</span>
+      <i class="ti ti-chevron-down"></i>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- PESTAÑAS -->
+  <div class="tabs-wrap">
+    <button class="tab activa" onclick="cambiarTab('alimentos')">
+      <i class="ti ti-apple"></i> Alimentos
+    </button>
+    <button class="tab" onclick="cambiarTab('articulos')">
+      <i class="ti ti-shirt"></i> Artículos
+    </button>
+  </div>
+
+  <!-- ========== ALIMENTOS ========== -->
+  <div class="seccion activa" id="sec-alimentos">
+
+    <div class="acciones">
+      <button class="btn-accion btn-recibir-ali" onclick="abrirModal('rec-ali')">
+        <div class="btn-icono"><i class="ti ti-package-import"></i></div>
+        <div class="btn-texto">
+          <h3>Registrar alimento recibido</h3>
+          <p>Agregar comida que acaba de llegar</p>
+        </div>
+      </button>
+      <button class="btn-accion btn-repartir-ali" onclick="abrirModal('rep-ali')">
+        <div class="btn-icono"><i class="ti ti-truck-delivery"></i></div>
+        <div class="btn-texto">
+          <h3>Repartir a sucursal</h3>
+          <p>Enviar alimentos a otra sede</p>
+        </div>
+      </button>
+    </div>
+
+    <div class="sec-titulo" style="margin-bottom:20px;">
+      <div class="sec-titulo-linea morado"></div>
+      <h2>Resumen general</h2>
+    </div>
+
+    <!-- Banner ambiental: donaciones de comida -->
+    <div class="sec-video-banner">
+      <video autoplay muted loop playsinline>
+        <source src="https://videos.pexels.com/video-files/6646918/6646918-uhd_2560_1440_30fps.mp4" type="video/mp4">
+        <source src="https://videos.pexels.com/video-files/4393668/4393668-hd_1920_1080_30fps.mp4" type="video/mp4">
+      </video>
+      <div class="ban-overlay morado"></div>
+      <div class="ban-content">
+        <div class="ban-tag">Donaciones · Alimentos</div>
+        <h3>Cada kilo de comida<br>es una familia que respira</h3>
+        <p>Inventario en tiempo real de la sucursal principal · Puebla</p>
+      </div>
+    </div>
+    <div class="resumen" style="margin-bottom:40px;">
+      <div class="resumen-card"><div class="num num-morado" id="ali-total">0</div><div class="label">Productos diferentes</div></div>
+      <div class="resumen-card"><div class="num num-morado" id="ali-kg">0</div><div class="label">Kilos / Litros</div></div>
+      <div class="resumen-card"><div class="num num-morado" id="ali-pzas">0</div><div class="label">Piezas</div></div>
+      <div class="resumen-card"><div class="num num-rojo" id="ali-bajos">0</div><div class="label">Con poca cantidad</div></div>
+    </div>
+
+    <div class="sec-titulo"><div class="sec-titulo-linea morado"></div><h2>¿Qué tenemos disponible?</h2></div>
+    <div class="categorias" id="cats-alimentos"></div>
+
+    <div class="sec-titulo"><div class="sec-titulo-linea morado"></div><h2>Repartos por sucursal</h2></div>
+    <div class="sucursales" id="suc-alimentos"></div>
+
+  </div>
+
+  <!-- ========== ARTÍCULOS ========== -->
+  <div class="seccion" id="sec-articulos">
+
+    <div class="acciones">
+      <button class="btn-accion btn-recibir-art" onclick="abrirModal('rec-art')">
+        <div class="btn-icono"><i class="ti ti-package-import"></i></div>
+        <div class="btn-texto">
+          <h3>Registrar artículo recibido</h3>
+          <p>Ropa, juguetes, libros y más</p>
+        </div>
+      </button>
+      <button class="btn-accion btn-repartir-art" onclick="abrirModal('rep-art')">
+        <div class="btn-icono"><i class="ti ti-truck-delivery"></i></div>
+        <div class="btn-texto">
+          <h3>Repartir a sucursal</h3>
+          <p>Enviar artículos a otra sede</p>
+        </div>
+      </button>
+    </div>
+
+    <div class="sec-titulo" style="margin-bottom:20px;">
+      <div class="sec-titulo-linea naranja"></div>
+      <h2>Resumen general</h2>
+    </div>
+
+    <!-- Banner ambiental: donaciones de artículos -->
+    <div class="sec-video-banner">
+      <video autoplay muted loop playsinline>
+        <source src="https://videos.pexels.com/video-files/5063589/5063589-uhd_2560_1440_25fps.mp4" type="video/mp4">
+        <source src="https://videos.pexels.com/video-files/3902562/3902562-hd_1920_1080_30fps.mp4" type="video/mp4">
+      </video>
+      <div class="ban-overlay naranja"></div>
+      <div class="ban-content">
+        <div class="ban-tag">Donaciones · Artículos</div>
+        <h3>Ropa, juguetes y libros<br>que llenan de alegría</h3>
+        <p>Registro de artículos recibidos y repartos a sucursales</p>
+      </div>
+    </div>
+    <div class="resumen" style="margin-bottom:40px;">
+      <div class="resumen-card"><div class="num num-naranja" id="art-total">0</div><div class="label">Artículos diferentes</div></div>
+      <div class="resumen-card"><div class="num num-naranja" id="art-pzas">0</div><div class="label">Piezas totales</div></div>
+      <div class="resumen-card"><div class="num num-naranja" id="art-cats">0</div><div class="label">Categorías</div></div>
+      <div class="resumen-card"><div class="num num-rojo" id="art-bajos">0</div><div class="label">Con poca cantidad</div></div>
+    </div>
+
+    <div class="sec-titulo"><div class="sec-titulo-linea naranja"></div><h2>¿Qué tenemos disponible?</h2></div>
+    <div class="categorias" id="cats-articulos"></div>
+
+    <div class="sec-titulo"><div class="sec-titulo-linea naranja"></div><h2>Repartos por sucursal</h2></div>
+    <div class="sucursales" id="suc-articulos"></div>
+
+  </div>
+
+</div><!-- /main -->
+
+<!-- MODAL: RECIBIR ALIMENTO -->
+<div class="modal-overlay" id="modal-rec-ali">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Registrar alimento recibido</h2>
+        <p>Agrega la comida que acaba de llegar a la sucursal</p>
+      </div>
+      <button class="btn-cerrar" onclick="cerrarModal('rec-ali')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-grupo"><label>CATEGORÍA</label>
+      <select id="ali-rec-cat" onchange="onCatChange('ali','rec')">
+        <option value="">— Selecciona o crea nueva —</option>
+        <option value="__nueva__">+ Crear nueva categoría</option>
+      </select>
+    </div>
+    <div class="form-grupo" id="ali-rec-nueva-cat-g" style="display:none"><label>NOMBRE DE LA NUEVA CATEGORÍA</label>
+      <input type="text" id="ali-rec-nueva-cat" placeholder="Ej. Lácteos, Granos, Enlatados...">
+    </div>
+    <div class="form-grupo"><label>PRODUCTO</label>
+      <select id="ali-rec-item" onchange="onItemChange('ali','rec')">
+        <option value="">— Primero elige una categoría —</option>
+      </select>
+    </div>
+    <div class="form-grupo" id="ali-rec-nuevo-item-g" style="display:none"><label>NOMBRE DEL NUEVO PRODUCTO</label>
+      <input type="text" id="ali-rec-nuevo-item" placeholder="Ej. Arroz, Leche, Atún...">
+    </div>
+    <div class="form-fila">
+      <div class="form-grupo"><label>CANTIDAD</label><input type="number" id="ali-rec-cant" min="0" step="0.1" placeholder="Ej. 5"></div>
+      <div class="form-grupo"><label>UNIDAD</label>
+        <select id="ali-rec-unidad"><option value="kg">Kilos</option><option value="pzas">Piezas</option><option value="lts">Litros</option></select>
+      </div>
+      <div class="form-grupo"><label>FECHA</label><input type="date" id="ali-rec-fecha"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-neutro" onclick="cerrarModal('rec-ali')">Cancelar</button>
+      <button class="btn btn-morado" id="btn-ali-rec" onclick="registrar('ali','rec')"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPARTIR ALIMENTO -->
+<div class="modal-overlay" id="modal-rep-ali">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Repartir alimentos</h2>
+        <p>Enviar comida del inventario a otra sucursal</p>
+      </div>
+      <button class="btn-cerrar" onclick="cerrarModal('rep-ali')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-grupo"><label>SUCURSAL DESTINO</label>
+      <select id="ali-rep-suc"><option value="">— Selecciona la sucursal —</option></select>
+    </div>
+    <div class="form-grupo"><label>CATEGORÍA</label>
+      <select id="ali-rep-cat" onchange="onCatChange('ali','rep')"><option value="">— Selecciona una categoría —</option></select>
+    </div>
+    <div class="form-grupo"><label>PRODUCTO</label>
+      <select id="ali-rep-item" onchange="mostrarDisponible('ali')"><option value="">— Primero elige una categoría —</option></select>
+    </div>
+    <div class="disponible-info" id="ali-disponible">
+      <i class="ti ti-info-circle"></i> Disponible en bodega: <strong id="ali-disp-cant">—</strong>
+    </div>
+    <div class="form-fila">
+      <div class="form-grupo"><label>CANTIDAD A ENVIAR</label><input type="number" id="ali-rep-cant" min="0" step="0.1" placeholder="Ej. 3"></div>
+      <div class="form-grupo"><label>UNIDAD</label>
+        <select id="ali-rep-unidad"><option value="kg">Kilos</option><option value="pzas">Piezas</option><option value="lts">Litros</option></select>
+      </div>
+      <div class="form-grupo"><label>FECHA</label><input type="date" id="ali-rep-fecha"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-neutro" onclick="cerrarModal('rep-ali')">Cancelar</button>
+      <button class="btn btn-morado" id="btn-ali-rep" onclick="registrar('ali','rep')"><i class="ti ti-truck"></i> Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RECIBIR ARTÍCULO -->
+<div class="modal-overlay" id="modal-rec-art">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Registrar artículo recibido</h2>
+        <p>Ropa, juguetes, libros, blancos y otros</p>
+      </div>
+      <button class="btn-cerrar" onclick="cerrarModal('rec-art')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-grupo"><label>CATEGORÍA</label>
+      <select id="art-rec-cat" onchange="onCatChange('art','rec')">
+        <option value="">— Selecciona o crea nueva —</option>
+        <option value="__nueva__">+ Crear nueva categoría</option>
+      </select>
+    </div>
+    <div class="form-grupo" id="art-rec-nueva-cat-g" style="display:none"><label>NOMBRE DE LA NUEVA CATEGORÍA</label>
+      <input type="text" id="art-rec-nueva-cat" placeholder="Ej. Ropa, Juguetes, Libros...">
+    </div>
+    <div class="form-grupo"><label>ARTÍCULO</label>
+      <select id="art-rec-item" onchange="onItemChange('art','rec')"><option value="">— Primero elige una categoría —</option></select>
+    </div>
+    <div class="form-grupo" id="art-rec-nuevo-item-g" style="display:none"><label>NOMBRE DEL ARTÍCULO</label>
+      <input type="text" id="art-rec-nuevo-item" placeholder="Ej. Camisa talla M, Peluche, Libro infantil...">
+    </div>
+    <div class="form-fila">
+      <div class="form-grupo"><label>CANTIDAD</label><input type="number" id="art-rec-cant" min="0" step="1" placeholder="Ej. 10"></div>
+      <div class="form-grupo"><label>UNIDAD</label>
+        <select id="art-rec-unidad"><option value="pzas">Piezas</option><option value="pares">Pares</option><option value="prendas">Prendas</option><option value="juegos">Juegos</option></select>
+      </div>
+      <div class="form-grupo"><label>FECHA</label><input type="date" id="art-rec-fecha"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-neutro" onclick="cerrarModal('rec-art')">Cancelar</button>
+      <button class="btn btn-naranja" id="btn-art-rec" onclick="registrar('art','rec')"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPARTIR ARTÍCULO -->
+<div class="modal-overlay" id="modal-rep-art">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Repartir artículos</h2>
+        <p>Enviar artículos del inventario a otra sucursal</p>
+      </div>
+      <button class="btn-cerrar" onclick="cerrarModal('rep-art')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-grupo"><label>SUCURSAL DESTINO</label>
+      <select id="art-rep-suc"><option value="">— Selecciona la sucursal —</option></select>
+    </div>
+    <div class="form-grupo"><label>CATEGORÍA</label>
+      <select id="art-rep-cat" onchange="onCatChange('art','rep')"><option value="">— Selecciona una categoría —</option></select>
+    </div>
+    <div class="form-grupo"><label>ARTÍCULO</label>
+      <select id="art-rep-item" onchange="mostrarDisponible('art')"><option value="">— Primero elige una categoría —</option></select>
+    </div>
+    <div class="disponible-info naranja" id="art-disponible">
+      <i class="ti ti-info-circle"></i> Disponible en bodega: <strong id="art-disp-cant">—</strong>
+    </div>
+    <div class="form-fila">
+      <div class="form-grupo"><label>CANTIDAD A ENVIAR</label><input type="number" id="art-rep-cant" min="0" step="1" placeholder="Ej. 5"></div>
+      <div class="form-grupo"><label>UNIDAD</label>
+        <select id="art-rep-unidad"><option value="pzas">Piezas</option><option value="pares">Pares</option><option value="prendas">Prendas</option><option value="juegos">Juegos</option></select>
+      </div>
+      <div class="form-grupo"><label>FECHA</label><input type="date" id="art-rep-fecha"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-neutro" onclick="cerrarModal('rep-art')">Cancelar</button>
+      <button class="btn btn-naranja" id="btn-art-rep" onclick="registrar('art','rep')"><i class="ti ti-truck"></i> Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const URL_API = 'https://script.google.com/macros/s/AKfycbyEVZhcgtr8kBgBiIvj3Zh5RMUMVLLY89fbwfvxWsgQkibJuChrODiszXv4eniStwVM-Q/exec';
+
+let sucursales = [];
+let inv = { ali: [], art: [] };
+let rep = { ali: [], art: [] };
+
+// ===== INICIO =====
+window.addEventListener('DOMContentLoaded', () => {
+  inicializarFecha();
+  if (URL_API === 'PEGA_AQUI_TU_URL_DEL_APPS_SCRIPT') {
+    document.getElementById('loading').classList.add('oculto');
+    document.getElementById('config-warning').style.display = 'flex';
+    return;
+  }
+  cargarDatos();
+});
+
+function inicializarFecha() {
+  const hoy = new Date();
+  document.getElementById('fecha-hoy').textContent =
+    hoy.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+  const iso = hoy.toISOString().split('T')[0];
+  ['ali-rec-fecha','ali-rep-fecha','art-rec-fecha','art-rep-fecha'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = iso;
+  });
+}
+
+// ===== PESTAÑAS =====
+function cambiarTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('activa'));
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.textContent.trim().toLowerCase().includes(tab === 'alimentos' ? 'alimento' : 'artículo'))
+      t.classList.add('activa');
+  });
+  document.getElementById(`sec-${tab}`).classList.add('activa');
+}
+
+// ===== CARGA =====
+async function cargarDatos() {
+  mostrarLoading('Cargando datos...');
+  try {
+    const res  = await fetch(`${URL_API}?accion=todo`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    sucursales = data.sucursales           || ['Niño Poblano','Cholula','Central de Abastos'];
+    inv.ali    = data.inventario_alimentos || [];
+    inv.art    = data.inventario_articulos || [];
+    rep.ali    = data.repartos_alimentos   || [];
+    rep.art    = data.repartos_articulos   || [];
+    renderTodo();
+    ocultarLoading();
+  } catch(err) {
+    ocultarLoading();
+    mostrarAlerta('Error al cargar: ' + err.message, true);
+  }
+}
+
+async function enviarAccion(payload) {
+  const res = await fetch(URL_API, {
+    method: 'POST', body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  return await res.json();
+}
+
+// ===== RENDER =====
+function renderTodo() {
+  renderSucursales('ali'); renderSucursales('art');
+  llenarSelectsSucursal();
+  renderCategorias('ali'); renderCategorias('art');
+  actualizarResumen('ali'); actualizarResumen('art');
+  actualizarSucursales('ali'); actualizarSucursales('art');
+  llenarSelectsCats();
+}
+
+function renderSucursales(tipo) {
+  const esAli = tipo === 'ali';
+  const cls   = esAli ? 'm' : 'n';
+  const cont  = document.getElementById(esAli ? 'suc-alimentos' : 'suc-articulos');
+  cont.innerHTML = '';
+  sucursales.forEach((nombre, idx) => {
+    const card = document.createElement('div');
+    card.className = 'suc-card';
+    card.innerHTML = `
+      <div class="suc-top">
+        <div class="suc-icono ${cls}"><i class="ti ti-map-pin"></i></div>
+        <div>
+          <div class="suc-nombre">${escapeHTML(nombre)}</div>
+          <div class="suc-sub">Sucursal ${idx + 1}</div>
+        </div>
+      </div>
+      <div class="suc-divider"></div>
+      <div class="suc-stats">
+        <div class="suc-stat">
+          <div class="num ${esAli ? 'num-morado' : 'num-naranja'}" id="${tipo}-suc-env-${idx}">0</div>
+          <div class="label">Envíos este mes</div>
+        </div>
+        <div class="suc-stat">
+          <div class="num ${esAli ? 'num-morado' : 'num-naranja'}" id="${tipo}-suc-uni-${idx}">0</div>
+          <div class="label">${esAli ? 'Kg/Lts' : 'Piezas'} enviados</div>
+        </div>
+      </div>
+      <div class="suc-fecha">
+        <i class="ti ti-clock" style="font-size:13px;"></i>
+        Último envío: <span id="${tipo}-suc-fec-${idx}">Sin envíos</span>
+      </div>`;
+    cont.appendChild(card);
+  });
+}
+
+function llenarSelectsSucursal() {
+  ['ali-rep-suc','art-rep-suc'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">— Selecciona la sucursal —</option>';
+    sucursales.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n; sel.appendChild(opt);
+    });
+  });
+}
+
+function renderCategorias(tipo) {
+  const esAli = tipo === 'ali';
+  const cls   = esAli ? 'm' : 'n';
+  const bgCls = esAli ? 'morado-bg' : 'naranja-bg';
+  const cont  = document.getElementById(esAli ? 'cats-alimentos' : 'cats-articulos');
+  cont.innerHTML = '';
+  const datos = inv[tipo];
+  if (!datos.length) {
+    cont.innerHTML = `<div class="vacio">
+      <i class="ti ti-package-off"></i>
+      <div class="v-titulo">Aún no hay ${esAli ? 'alimentos' : 'artículos'} registrados</div>
+      <div class="v-sub">Usa el botón de arriba para empezar a registrar</div>
+    </div>`;
+    return;
+  }
+  const grupos = {};
+  datos.forEach(i => { if (!grupos[i.categoria]) grupos[i.categoria] = []; grupos[i.categoria].push(i); });
+  Object.keys(grupos).sort().forEach(cat => {
+    const items = grupos[cat];
+    const itemsHTML = items.map(item => {
+      let clase = esAli ? 'badge-alto' : 'badge-alto-n';
+      if (item.cantidad < 3) clase = 'badge-bajo';
+      else if (item.cantidad < 10) clase = 'badge-medio';
+      return `<div class="item">
+        <span class="item-nombre">${escapeHTML(item.producto)}</span>
+        <span class="item-badge ${clase}">${item.cantidad} ${item.unidad}</span>
+      </div>`;
+    }).join('');
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.innerHTML = `
+      <div class="cat-header ${bgCls}" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="cat-info">
+          <div class="cat-icono ${cls}"><i class="ti ${esAli ? 'ti-apple' : 'ti-box'}"></i></div>
+          <div>
+            <div class="cat-nombre">${escapeHTML(cat)}</div>
+            <div class="cat-conteo">${items.length} producto${items.length!==1?'s':''}</div>
+          </div>
+        </div>
+        <i class="ti ti-chevron-down cat-toggle"></i>
+      </div>
+      <div class="cat-items">${itemsHTML}</div>`;
+    cont.appendChild(card);
+  });
+}
+
+function actualizarResumen(tipo) {
+  const datos = inv[tipo];
+  const esAli = tipo === 'ali';
+  if (esAli) {
+    let kg = 0, pzas = 0, bajos = 0;
+    datos.forEach(i => {
+      if (i.unidad==='kg'||i.unidad==='lts') kg += i.cantidad; else pzas += i.cantidad;
+      if (i.cantidad < 3) bajos++;
+    });
+    document.getElementById('ali-total').textContent = datos.length;
+    document.getElementById('ali-kg').textContent    = kg.toFixed(1);
+    document.getElementById('ali-pzas').textContent  = pzas;
+    document.getElementById('ali-bajos').textContent = bajos;
+  } else {
+    let pzas = 0, bajos = 0; const cats = new Set();
+    datos.forEach(i => { pzas += i.cantidad; if (i.cantidad<3) bajos++; cats.add(i.categoria); });
+    document.getElementById('art-total').textContent = datos.length;
+    document.getElementById('art-pzas').textContent  = pzas;
+    document.getElementById('art-cats').textContent  = cats.size;
+    document.getElementById('art-bajos').textContent = bajos;
+  }
+}
+
+function parsearFecha(v) {
+  const m = String(v||'').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m ? { anio:+m[1], mes:+m[2], dia:+m[3] } : null;
+}
+function normalizar(t) {
+  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+function actualizarSucursales(tipo) {
+  const hoy = new Date();
+  const mesActual = hoy.getMonth() + 1, anioActual = hoy.getFullYear();
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const stats = sucursales.map(() => ({ e:0, uni:0, f:null }));
+  const idxMap = {};
+  sucursales.forEach((n,i) => idxMap[normalizar(n)] = i);
+  const esAli = tipo === 'ali';
+  rep[tipo].forEach(r => {
+    const idx = idxMap[normalizar(r.sucursal)];
+    if (idx === undefined) return;
+    const f = parsearFecha(r.fecha);
+    if (!f) return;
+    if (f.mes===mesActual && f.anio===anioActual) {
+      stats[idx].e++;
+      if (esAli && (r.unidad==='kg'||r.unidad==='lts')) stats[idx].uni += parseFloat(r.cantidad)||0;
+      if (!esAli) stats[idx].uni += parseFloat(r.cantidad)||0;
+    }
+    const fNum = f.anio*10000+f.mes*100+f.dia;
+    if (!stats[idx].f || fNum > stats[idx].f.num) stats[idx].f = { num:fNum, ...f };
+  });
+  sucursales.forEach((n, idx) => {
+    const eE = document.getElementById(`${tipo}-suc-env-${idx}`);
+    const eU = document.getElementById(`${tipo}-suc-uni-${idx}`);
+    const eF = document.getElementById(`${tipo}-suc-fec-${idx}`);
+    if (!eE) return;
+    eE.textContent = stats[idx].e;
+    eU.textContent = esAli ? stats[idx].uni.toFixed(1) : stats[idx].uni;
+    eF.textContent = stats[idx].f ? `${stats[idx].f.dia} ${meses[stats[idx].f.mes-1]}` : 'Sin envíos';
+  });
+}
+
+// ===== SELECTS MODALES =====
+function llenarSelectsCats() {
+  ['ali','art'].forEach(tipo => {
+    ['rec','rep'].forEach(modo => {
+      const sel = document.getElementById(`${tipo}-${modo}-cat`);
+      if (!sel) return;
+      const cats = [...new Set(inv[tipo].map(i => i.categoria))].sort();
+      sel.innerHTML = modo==='rec'
+        ? '<option value="">— Selecciona o crea nueva —</option>'
+        : '<option value="">— Selecciona una categoría —</option>';
+      cats.forEach(cat => { const o=document.createElement('option'); o.value=cat; o.textContent=cat; sel.appendChild(o); });
+      if (modo==='rec') { const o=document.createElement('option'); o.value='__nueva__'; o.textContent='+ Crear nueva categoría'; sel.appendChild(o); }
+    });
+  });
+}
+
+function onCatChange(tipo, modo) {
+  const cat = document.getElementById(`${tipo}-${modo}-cat`).value;
+  if (modo==='rec') document.getElementById(`${tipo}-rec-nueva-cat-g`).style.display = cat==='__nueva__'?'block':'none';
+  const itemSel = document.getElementById(`${tipo}-${modo}-item`);
+  itemSel.innerHTML = '';
+  if (cat==='__nueva__') {
+    itemSel.innerHTML = '<option value="__nuevo__">+ Agregar nuevo artículo</option>';
+    if (modo==='rec') document.getElementById(`${tipo}-rec-nuevo-item-g`).style.display = 'block';
+  } else if (cat) {
+    itemSel.innerHTML = '<option value="">— Selecciona un artículo —</option>';
+    inv[tipo].filter(i=>i.categoria===cat).forEach(i => {
+      const o=document.createElement('option'); o.value=i.producto;
+      o.textContent=`${i.producto} (${i.cantidad} ${i.unidad})`; itemSel.appendChild(o);
+    });
+    if (modo==='rec') {
+      const o=document.createElement('option'); o.value='__nuevo__'; o.textContent='+ Agregar nuevo artículo'; itemSel.appendChild(o);
+      document.getElementById(`${tipo}-rec-nuevo-item-g`).style.display='none';
+    }
+  } else {
+    itemSel.innerHTML = '<option value="">— Primero elige una categoría —</option>';
+  }
+  const d = document.getElementById(`${tipo}-disponible`);
+  if (d) d.style.display='none';
+}
+
+function onItemChange(tipo, modo) {
+  if (modo==='rec') {
+    const item = document.getElementById(`${tipo}-rec-item`).value;
+    document.getElementById(`${tipo}-rec-nuevo-item-g`).style.display = item==='__nuevo__'?'block':'none';
+  }
+}
+
+function mostrarDisponible(tipo) {
+  const cat  = document.getElementById(`${tipo}-rep-cat`).value;
+  const item = document.getElementById(`${tipo}-rep-item`).value;
+  const info = document.getElementById(`${tipo}-disponible`);
+  if (cat && item) {
+    const prod = inv[tipo].find(i=>i.categoria===cat&&i.producto===item);
+    if (prod) {
+      document.getElementById(`${tipo}-disp-cant`).textContent = `${prod.cantidad} ${prod.unidad}`;
+      const u = document.getElementById(`${tipo}-rep-unidad`);
+      if (u) u.value = prod.unidad;
+      info.style.display='block'; return;
+    }
+  }
+  info.style.display='none';
+}
+
+// ===== MODALES =====
+function abrirModal(id) { document.getElementById(`modal-${id}`).classList.add('activo'); }
+function cerrarModal(id) {
+  document.getElementById(`modal-${id}`).classList.remove('activo');
+  const m = document.getElementById(`modal-${id}`);
+  m.querySelectorAll('input[type="number"],input[type="text"]').forEach(i=>i.value='');
+  m.querySelectorAll('select').forEach(s=>{ if(!s.id.includes('unidad')) s.value=''; });
+  ['ali-rec-nueva-cat-g','ali-rec-nuevo-item-g','art-rec-nueva-cat-g','art-rec-nuevo-item-g'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='none';});
+  ['ali-disponible','art-disponible'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='none';});
+  inicializarFecha();
+}
+
+// ===== REGISTRAR =====
+async function registrar(tipo, modo) {
+  const esRec=modo==='rec', esAli=tipo==='ali';
+  let categoria = document.getElementById(`${tipo}-${modo}-cat`).value;
+  let producto  = document.getElementById(`${tipo}-${modo}-item`).value;
+  const cant    = parseFloat(document.getElementById(`${tipo}-${modo}-cant`).value);
+  const unidad  = document.getElementById(`${tipo}-${modo}-unidad`).value;
+  const fecha   = document.getElementById(`${tipo}-${modo}-fecha`).value;
+  if (esRec) {
+    if (categoria==='__nueva__') { categoria=document.getElementById(`${tipo}-rec-nueva-cat`).value.trim(); if(!categoria){alert('Escribe el nombre de la nueva categoría');return;} }
+    if (producto==='__nuevo__')  { producto=document.getElementById(`${tipo}-rec-nuevo-item`).value.trim(); if(!producto){alert('Escribe el nombre del artículo');return;} }
+  }
+  if (!categoria||!producto||!cant||cant<=0||!fecha) { alert('Por favor llena todos los campos'); return; }
+  if (!esRec) {
+    const suc=document.getElementById(`${tipo}-rep-suc`).value;
+    if (!suc) { alert('Selecciona la sucursal'); return; }
+    const disp=inv[tipo].find(i=>i.categoria===categoria&&i.producto===producto);
+    if (!disp) { alert('Producto no encontrado en inventario'); return; }
+    if (cant>disp.cantidad) { alert(`Solo hay ${disp.cantidad} ${disp.unidad} disponibles`); return; }
+  }
+  const btnId=`btn-${tipo}-${modo}`;
+  const btn=document.getElementById(btnId);
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Guardando...';
+  mostrarLoading('Guardando en la hoja...');
+  try {
+    const payload={ categoria, producto, cantidad:cant, unidad, fecha,
+      accion:`${esRec?'recibir':'repartir'}_${esAli?'alimento':'articulo'}` };
+    if (!esRec) payload.sucursal=document.getElementById(`${tipo}-rep-suc`).value;
+    const res=await enviarAccion(payload);
+    if (!res.ok) throw new Error(res.error);
+    cerrarModal(`${modo}-${tipo}`);
+    await cargarDatos();
+    mostrarAlerta(esRec
+      ? `Registrados ${cant} ${unidad} de ${producto}`
+      : `Enviados ${cant} ${unidad} de ${producto} a ${payload.sucursal}`);
+  } catch(err) {
+    ocultarLoading();
+    mostrarAlerta('Error: '+err.message, true);
+  } finally {
+    btn.disabled=false;
+    btn.innerHTML=esRec?'<i class="ti ti-check"></i> Guardar':'<i class="ti ti-truck"></i> Enviar';
+  }
+}
+
+// ===== UTILIDADES =====
+function escapeHTML(s) { const d=document.createElement('div');d.textContent=String(s);return d.innerHTML; }
+function mostrarAlerta(msg,esError=false) {
+  const al=document.getElementById('alerta');
+  document.getElementById('alerta-texto').textContent=msg;
+  al.classList.add('visible');
+  esError?al.classList.add('error'):al.classList.remove('error');
+  setTimeout(()=>al.classList.remove('visible'),5000);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function mostrarLoading(txt) {
+  document.getElementById('loading-texto').textContent=txt||'Cargando...';
+  document.getElementById('loading').classList.remove('oculto');
+}
+function ocultarLoading() { document.getElementById('loading').classList.add('oculto'); }
+</script>
+</body>
+</html>
